@@ -6,11 +6,13 @@ const { userOneId, userOne, setupDatabase} = require('./fixtures/db')
 beforeEach(setupDatabase);
 
 test('Should signup a new user', async () => {
-    const response = await request(app).post('/users').send({
-        name: 'Bernard Doci',
-        email: 'bernard.doci@gmail.com',
-        password: 'Beni123'
-    }).expect(201);
+    const response = await request(app)
+        .post('/users').send({
+            name: 'Bernard Doci',
+            email: 'bernard.doci@gmail.com',
+            password: 'Beni123'
+        })
+        .expect(201);
 
     // Assert that the databes was changed correctly
     const user = await User.findById(response.body.user._id);
@@ -26,6 +28,17 @@ test('Should signup a new user', async () => {
     })
 
     expect(user.password).not.toBe('Beni123')
+})
+
+test('Should not signup user with invalid name/email/password', async () => {
+    request(app)
+        .post('/users')
+        .send({
+            name: 123,
+            email: 'blabla.com',
+            password: 'password'
+        })
+        .expect(400)
 })
 
 test('Should login existing user', async () => {
@@ -101,6 +114,31 @@ test('Should update valid user fields', async () => {
     const user = await User.findById(userOneId);
     expect(user.name).toEqual('Jess')
 })
+
+test('Should not update user if unauthenticated', async () => {
+    const response = await request(app)
+        .patch('/users/me')
+        .send({
+            name: 'Anonymous'
+        })
+        .expect(401)
+    
+    const user = await User.findById(userOneId);
+    expect(user.name).toBe('Dominik Uksihini')
+})
+
+test('Should not update user with invalid name/email/password', async () => {
+    await request(app)
+        .patch('/users/me')
+        .set('Authorization', `Bearer ${userOne.tokens[0].token}`)
+        .send({
+            name: '',
+            email: '',
+            password: ''
+        })
+        .expect(400)
+})
+
 
 test('Should not update invalid user fields', async () => {
     await request(app)
