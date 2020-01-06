@@ -2,6 +2,8 @@ const express = require('express');
 const router = new express.Router();
 const Task = require('../models/task');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const sharp = require('sharp');
 
 router.post('/tasks', auth, async (req, res) => {
     // const task = new Task(req.body);
@@ -89,6 +91,29 @@ router.patch('/tasks/:id', auth, async (req, res) => {
     } catch (e) {
         res.status(500).send(e);
     }
+})
+
+const upload = multer({
+    limits: {
+        fileSize: 1000000
+    },
+    fileFilter(req, file, cb) {
+        if(!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+            cb(new Error('Please upload an image'))
+        }
+        cb(undefined, true)
+    }
+})
+
+router.post('/tasks/:id/image', upload.single('image'), auth, async (req, res) => {
+    const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer()
+    const task = await Task.findOne({_id: req.params.id})
+    task.image = buffer
+    await task.save()
+    res.send()
+
+}, (error, req, res, next) => {
+    res.status(400).send({error: error.message})
 })
 
 router.delete('/tasks/:id', auth, async (req, res) => {
